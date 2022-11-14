@@ -237,12 +237,14 @@ def main():
               _hierarchicalClustering = linkage(rfm_df_scaled, method=hierarchical_method, metric='euclidean')
               cutTree = cut_tree(_hierarchicalClustering, n_clusters=k).reshape(-1,)
 
+              # Tab function 
+              tab1, tab2, tab3, tab4 = st.tabs(['Dendogram Hierarchical Clustering', 'Silhouette Score', 'RFM Boxplot', 'RFM Analysis'])
               # Dendogram
-              st.header(hierarchical_method + ' Method')
-              fig_Silh = plt.figure(figsize=(20, 10)) 
-              dendrogram(_hierarchicalClustering)
-              st.pyplot(fig_Silh) 
-
+              with tab1:
+                st.header(hierarchical_method + ' Method')
+                fig_Silh = plt.figure(figsize=(20, 10)) 
+                dendrogram(_hierarchicalClustering)
+                st.pyplot(fig_Silh) 
 
               # assign cluster label
               rfm_df_scaled['Cluster Hierarchical'] = cutTree
@@ -265,101 +267,104 @@ def main():
 
               # Region Silhouette Analysis
               # Silhouette analysis
-              st.subheader("Silhouette Analysis")
-              silhouette_df = []
-              silhouette = []
-              range_n_clusters = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-              range_k = range(2,11)
+              with tab2:
+                st.subheader("Silhouette Analysis")
+                silhouette_df = []
+                silhouette = []
+                range_n_clusters = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+                range_k = range(2,11)
 
-              for num_clusters in range_n_clusters:
-                  
-                  cluster_labels = Cluster_labels
-                  
-                  # silhouette score
-                  silhouette_avg = silhouette_score(rfm_df_scaled2, cluster_labels)
-                  silhouette.append(silhouette_avg)
-                  listSilhouette_df = [num_clusters, silhouette_avg]
-                  silhouette_df.append(listSilhouette_df)
-                  # st.text("For n_clusters={0}, the silhouette score is {1}".format(num_clusters, silhouette_avg))
-              
-              silhouette_df = pd.DataFrame(silhouette_df)
-              silhouette_df.columns = ['Clusters', 'Silhouette Score']
-              silhouette_df.style.hide(axis='index')
+                for num_clusters in range_n_clusters:
+                    
+                    cluster_labels = Cluster_labels
+                    
+                    # silhouette score
+                    silhouette_avg = silhouette_score(rfm_df_scaled2, cluster_labels)
+                    silhouette.append(silhouette_avg)
+                    listSilhouette_df = [num_clusters, silhouette_avg]
+                    silhouette_df.append(listSilhouette_df)
+                    # st.text("For n_clusters={0}, the silhouette score is {1}".format(num_clusters, silhouette_avg))
+                
+                silhouette_df = pd.DataFrame(silhouette_df)
+                silhouette_df.columns = ['Clusters', 'Silhouette Score']
+                silhouette_df.style.hide(axis='index')
 
-              st.write(silhouette_df)
+                st.write(silhouette_df)
 
 
-              # Vizualization Silhouette Analysis   
-              fig_Silh = plt.figure(figsize=(20, 10)) 
-              plt.plot(range_k, silhouette, 'bx-')
-              plt.xlabel('Values of K')
-              plt.ylabel('silhouette_avg')
-              plt.title('silhouette')
-              st.pyplot(fig_Silh) 
+                # Vizualization Silhouette Analysis   
+                fig_Silh = plt.figure(figsize=(20, 10)) 
+                plt.plot(range_k, silhouette, 'bx-')
+                plt.xlabel('Values of K')
+                plt.ylabel('silhouette_avg')
+                plt.title('silhouette')
+                st.pyplot(fig_Silh) 
 
               # Region show plot
-              st.header('Monetary')
-              fig_amt = plt.figure(figsize=(20, 10))
-              sns.boxplot(x='Hk Means Cluster', y='Amount', data=rfm).set_title('Amount Plot')
-              st.pyplot(fig_amt) 
+              with tab3:
+                st.header('Monetary')
+                fig_amt = plt.figure(figsize=(20, 10))
+                sns.boxplot(x='Hk Means Cluster', y='Amount', data=rfm).set_title('Amount Plot')
+                st.pyplot(fig_amt) 
 
-              st.header('Frequency')
-              fig_freq = plt.figure(figsize=(20, 10))
-              sns.boxplot(x='Hk Means Cluster', y='Frequency', data=rfm).set_title('Frequency Plot')
-              st.pyplot(fig_freq) 
+                st.header('Frequency')
+                fig_freq = plt.figure(figsize=(20, 10))
+                sns.boxplot(x='Hk Means Cluster', y='Frequency', data=rfm).set_title('Frequency Plot')
+                st.pyplot(fig_freq) 
 
-              st.header('Recency')
-              fig_rec = plt.figure(figsize=(20, 10))
-              sns.boxplot(x='Hk Means Cluster', y='Recency', data=rfm).set_title('Recency Plot')
-              st.pyplot(fig_rec) 
+                st.header('Recency')
+                fig_rec = plt.figure(figsize=(20, 10))
+                sns.boxplot(x='Hk Means Cluster', y='Recency', data=rfm).set_title('Recency Plot')
+                st.pyplot(fig_rec) 
 
               # Output RFM
-              st.header('RFM Output')
-              rfm_img = Image.open('img/app_img/rfm.png')
-              st.image(rfm_img, caption='RFM Mapper')
+              with tab4:
+                st.header('RFM Output')
+                rfm_img = Image.open('img/app_img/rfm.png')
+                st.image(rfm_img, caption='RFM Mapper')
 
-              stdDev_df = output_stdDev(rfm_df_scaled2, k)
+                stdDev_df = output_stdDev(rfm_df_scaled2, k)
 
-              # Untuk Monetary avg
-              m_ = stdDev_df.iloc[:, 0]
-              m_arr = m_.to_numpy()
-              avg_m = np.average(m_arr)
-              # Untuk Freq avg
-              f_ = stdDev_df.iloc[:, 1]
-              f_arr = f_.to_numpy()
-              avg_f = np.average(f_arr)
-              # Untuk Recency avg
-              r_ = stdDev_df.iloc[:, 2]
-              r_arr = r_.to_numpy()
-              avg_r = np.average(r_arr)
+                # Untuk Monetary avg
+                m_ = stdDev_df.iloc[:, 0]
+                m_arr = m_.to_numpy()
+                avg_m = np.average(m_arr)
+                # Untuk Freq avg
+                f_ = stdDev_df.iloc[:, 1]
+                f_arr = f_.to_numpy()
+                avg_f = np.average(f_arr)
+                # Untuk Recency avg
+                r_ = stdDev_df.iloc[:, 2]
+                r_arr = r_.to_numpy()
+                avg_r = np.average(r_arr)
 
-              # for monetary output
-              col1,col2,col3 = st.columns(3)
+                # for monetary output
+                col1,col2,col3 = st.columns(3)
 
-              with col1:
-                # for Monetary output
-                for num_clusters in range(k):
-                  if stdDev_df.iloc[num_clusters, 0] > avg_m:
-                      m_output = 'Monetary at cluster {0} is M(up)'.format(num_clusters)
-                  else:
-                      m_output = 'Monetary at cluster {0} is M(down)'.format(num_clusters)
-                  st.write(m_output)
-              with col2:
-                # for Frequency output
-                for num_clusters in range(k):
-                  if stdDev_df.iloc[num_clusters, 1] > avg_f:
-                      f_output = 'Frequency at cluster {0} is F(up)'.format(num_clusters)
-                  else:
-                      f_output = 'Frequency at cluster {0} is F(down)'.format(num_clusters)
-                  st.write(f_output)
-              # with col3:
-              #   # for Recency output
-              #   for num_clusters in range(k):
-              #     if stdDev_df.iloc[num_clusters, 2] > avg_r:
-              #         r_output = 'Recency at cluster {0} is R(up)'.format(num_clusters)
-              #     else:
-              #         r_output = 'Recency at cluster {0} is R(down)'.format(num_clusters)
-              #     st.write(r_output)
+                with col1:
+                  # for Monetary output
+                  for num_clusters in range(k):
+                    if stdDev_df.iloc[num_clusters, 0] > avg_m:
+                        m_output = 'Monetary at cluster {0} is M(up)'.format(num_clusters)
+                    else:
+                        m_output = 'Monetary at cluster {0} is M(down)'.format(num_clusters)
+                    st.write(m_output)
+                with col2:
+                  # for Frequency output
+                  for num_clusters in range(k):
+                    if stdDev_df.iloc[num_clusters, 1] > avg_f:
+                        f_output = 'Frequency at cluster {0} is F(up)'.format(num_clusters)
+                    else:
+                        f_output = 'Frequency at cluster {0} is F(down)'.format(num_clusters)
+                    st.write(f_output)
+                # with col3:
+                #   # for Recency output
+                #   for num_clusters in range(k):
+                #     if stdDev_df.iloc[num_clusters, 2] > avg_r:
+                #         r_output = 'Recency at cluster {0} is R(up)'.format(num_clusters)
+                #     else:
+                #         r_output = 'Recency at cluster {0} is R(down)'.format(num_clusters)
+                #     st.write(r_output)
 
 
               # Region Sidebar continue
