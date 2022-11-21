@@ -17,6 +17,7 @@ from yellowbrick.cluster import SilhouetteVisualizer
 import copy
 from PIL import Image , ImageOps
 from streamlit_option_menu import option_menu
+from streamlit_profiler import Profiler
 
 import statistics
 
@@ -142,6 +143,12 @@ def Clt_Res_Callback():
 def convert_df(df):
    return df.to_csv(index=False).encode('utf-8')
 
+# Buat cari tau runtime per code
+# profiler = Profiler()
+# profiler.start()
+# # code
+# profiler.stop()
+# profiler.print()
 
 def main():
     # Navbar
@@ -232,6 +239,8 @@ def main():
               rfm_df_scaled = pd.DataFrame(rfm_df_scaled)
               rfm_df_scaled.columns = ['Amount', 'Frequency', 'Recency']
 
+              rfm_df_scaled_sil = rfm_df_scaled.copy(deep=True)
+
               #perform hierarchical clustering here
               # Single Linkage
               _hierarchicalClustering = linkage(rfm_df_scaled, method=hierarchical_method, metric='euclidean')
@@ -276,10 +285,18 @@ def main():
 
                 for num_clusters in range_n_clusters:
                     
-                    cluster_labels = Cluster_labels
+                    _hierarchicalClustering_sil = linkage(rfm_df_scaled_sil, method=hierarchical_method, metric='euclidean')
+                    cutTree_sil = cut_tree(_hierarchicalClustering_sil, n_clusters=num_clusters).reshape(-1,)
+                    rfm_df_scaled_sil['Cluster Hierarchical'] = cutTree_sil
+
+                    Centroid_df_sil = Initiate_Centroid(rfm_df_scaled_sil, num_clusters)
+                    rfm_df_scaled_sil2, Centroid_df_sil , iterasi_sil= clusterisasi(rfm_df_scaled_sil, rfm_df_scaled_sil['Amount'], rfm_df_scaled_sil['Frequency'], rfm_df_scaled_sil['Recency'], num_clusters, Centroid_df_sil)
+                    
+                    Cluster_labels_sil = rfm_df_scaled_sil2['Index Cluster'].to_numpy()
+                    cluster_labels_sil = Cluster_labels_sil
                     
                     # silhouette score
-                    silhouette_avg = silhouette_score(rfm_df_scaled2, cluster_labels)
+                    silhouette_avg = silhouette_score(rfm_df_scaled_sil2, cluster_labels_sil)
                     silhouette.append(silhouette_avg)
                     listSilhouette_df = [num_clusters, silhouette_avg]
                     silhouette_df.append(listSilhouette_df)
@@ -289,7 +306,7 @@ def main():
                 silhouette_df.columns = ['Clusters', 'Silhouette Score']
                 silhouette_df.style.hide(axis='index')
 
-                st.write(silhouette_df)
+                st.dataframe(silhouette_df)
 
 
                 # Vizualization Silhouette Analysis   
@@ -302,26 +319,32 @@ def main():
 
               # Region show plot
               with tab3:
-                st.header('Monetary')
-                fig_amt = plt.figure(figsize=(20, 10))
-                sns.boxplot(x='Hk Means Cluster', y='Amount', data=rfm).set_title('Amount Plot')
-                st.pyplot(fig_amt) 
+                st.header('Recency')
+                fig_rec = plt.figure(figsize=(20, 10))
+                sns.boxplot(x='Hk Means Cluster', y='Recency', data=rfm).set_title('Recency Plot')
+                st.pyplot(fig_rec) 
+                with st.expander("Recency"):
+                  st.write('R (Recency): Number of days since last purchase')
 
                 st.header('Frequency')
                 fig_freq = plt.figure(figsize=(20, 10))
                 sns.boxplot(x='Hk Means Cluster', y='Frequency', data=rfm).set_title('Frequency Plot')
                 st.pyplot(fig_freq) 
+                with st.expander("Frequency"):
+                  st.write('F (Frequency): Number of transactions')
 
-                st.header('Recency')
-                fig_rec = plt.figure(figsize=(20, 10))
-                sns.boxplot(x='Hk Means Cluster', y='Recency', data=rfm).set_title('Recency Plot')
-                st.pyplot(fig_rec) 
-
+                st.header('Monetary')
+                fig_amt = plt.figure(figsize=(20, 10))
+                sns.boxplot(x='Hk Means Cluster', y='Amount', data=rfm).set_title('Amount Plot')
+                st.pyplot(fig_amt) 
+                with st.expander("Monetary"):
+                  st.write('M (Monetary): Total amount of transactions (revenue contributed)')
+                
               # Output RFM
               with tab4:
                 st.header('RFM Output')
                 rfm_img = Image.open('img/app_img/rfm.png')
-                st.image(rfm_img, caption='RFM Mapper')
+                st.image(rfm_img, caption='Customer Value Matrixes (Der-Chiang Li, Wen-Li Dai, and Wan-Ting Tseng, 2011)')
 
                 stdDev_df = output_stdDev(rfm_df_scaled2, k)
 
@@ -339,43 +362,44 @@ def main():
                 avg_r = np.average(r_arr)
 
                 # for monetary output
-                col1,col2,col3 = st.columns(3)
-
-                with col1:
-                  # for Monetary output
-                  for num_clusters in range(k):
-                    if stdDev_df.iloc[num_clusters, 0] > avg_m:
-                        m_output = 'Monetary at cluster {0} is M(up)'.format(num_clusters)
-                    else:
-                        m_output = 'Monetary at cluster {0} is M(down)'.format(num_clusters)
-                    st.write(m_output)
+                col2,col3 = st.columns(2)
+                # col1,
+                # with col1:
+                  # for Recency output
+                  # for num_clusters in range(k):
+                  #   if stdDev_df.iloc[num_clusters, 2] > avg_r:
+                  #       r_output = 'Recency at cluster {0} is R(\u2191)'.format(num_clusters)
+                  #   else:
+                  #       r_output = 'Recency at cluster {0} is R(\u2193)'.format(num_clusters)
+                  #   st.write(r_output)
                 with col2:
                   # for Frequency output
                   for num_clusters in range(k):
                     if stdDev_df.iloc[num_clusters, 1] > avg_f:
-                        f_output = 'Frequency at cluster {0} is F(up)'.format(num_clusters)
+                        f_output = 'Frequency at cluster {0} is F(\u2191)'.format(num_clusters)
                     else:
-                        f_output = 'Frequency at cluster {0} is F(down)'.format(num_clusters)
+                        f_output = 'Frequency at cluster {0} is F(\u2193)'.format(num_clusters)
                     st.write(f_output)
-                # with col3:
-                #   # for Recency output
-                #   for num_clusters in range(k):
-                #     if stdDev_df.iloc[num_clusters, 2] > avg_r:
-                #         r_output = 'Recency at cluster {0} is R(up)'.format(num_clusters)
-                #     else:
-                #         r_output = 'Recency at cluster {0} is R(down)'.format(num_clusters)
-                #     st.write(r_output)
+                with col3:
+                  # for Monetary output
+                  for num_clusters in range(k):
+                    if stdDev_df.iloc[num_clusters, 0] > avg_m:
+                        m_output = 'Monetary at cluster {0} is M(\u2191)'.format(num_clusters)
+                    else:
+                        m_output = 'Monetary at cluster {0} is M(\u2193)'.format(num_clusters)
+                    st.write(m_output)
 
 
               # Region Sidebar continue
               if st.sidebar.checkbox(label = 'Show Data'):
+                  st.markdown("""---""")
                   # Show Data RFM H-K Means
                   st.header('Data RFM')
-                  st.write(rfm)
+                  st.dataframe(rfm)
                   # Download output data as csv
                   csv_RFM = convert_df(rfm)
                   st.sidebar.download_button(label = 'Save Data', data=csv_RFM, file_name='RFM_Hkmeans.csv', mime='text/csv')
-              # endregion
+
     
     if menu == 'Guide':
       st.markdown("<h2 style='text-align: center;'>User Manual Guide</h2>", unsafe_allow_html=True)
@@ -447,6 +471,9 @@ def main():
       st.markdown("<h2 style='text-align: center;'>About the Author</h2>", unsafe_allow_html=True)
       st.markdown('<p style="text-align: justify;">Andreas lie, is currently a student at Tarumanagara University. Majoring in Informatics, there he studied Data Engineering and made this application using knowledge gained from those subject.</p>', unsafe_allow_html=True)
       st.markdown('<p style="text-align: justify;">You can contact him through email : andreaslie19@gmail.com</p>', unsafe_allow_html=True)
+
+      st.markdown("<h2 style='text-align: center;'>References</h2>", unsafe_allow_html=True)
+      st.markdown('<p style="text-align: justify;">Li, Der-Chiang; Dai, Wen Li; and Tseng, Wan Ting. A two-stage clustering method to analyze customer characteristics to build discriminative customer management: A case of textile manufacturing business, https://www.sciencedirect.com/science/article/abs/pii/S0957417410014041</p>', unsafe_allow_html=True)
 
 
 
