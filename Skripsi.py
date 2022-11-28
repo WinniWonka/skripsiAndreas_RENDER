@@ -9,7 +9,7 @@ import seaborn as sns
 import sklearn
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, silhouette_samples
 from scipy.cluster.hierarchy import linkage
 from scipy.cluster.hierarchy import dendrogram
 from scipy.cluster.hierarchy import cut_tree
@@ -18,6 +18,7 @@ import copy
 from PIL import Image , ImageOps
 from streamlit_option_menu import option_menu
 from streamlit_profiler import Profiler
+import matplotlib.cm as cm
 
 import statistics
 
@@ -161,7 +162,7 @@ def main():
     )
     # Title App
     # st.title("""Customer Segmentation Based On RFM""")
-    st.markdown("<h1 style='text-align: center;'>Customer Segmentation Based On RFM</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>Customer Segmentation Based On <em>Recency, Frequency, and Monetary</em> (RFM)</h1>", unsafe_allow_html=True)
     st.markdown("""---""")
 
     if menu == 'Home':
@@ -176,8 +177,9 @@ def main():
 
           # slider untuk klaster
           k = st.sidebar.slider(min_value = 2, max_value = 10, value = 2, label = 'Number of Clusters')
-          # Select box ntuk method hierarchical clustering
-          hierarchical_method = st.sidebar.selectbox('Hierarchical Method', ('single', 'complete', 'average', 'ward'))
+          # Select box ntuk method hierarchical clustering (komen dari bu Tenny)
+          # hierarchical_method = st.sidebar.selectbox('Hierarchical Method', ('single', 'complete', 'average', 'ward')) 
+          hierarchical_method = 'ward'
 
           if (st.sidebar.button(label = 'Hierarchical K-Means Clustering', help = 'for clustering', on_click=Clt_Res_Callback) or st.session_state.Clt_Res):
               # preprocessing data & drop data null
@@ -284,30 +286,78 @@ def main():
                 range_k = range(2,11)
 
                 for num_clusters in range_n_clusters:
-                    
-                    _hierarchicalClustering_sil = linkage(rfm_df_scaled_sil, method=hierarchical_method, metric='euclidean')
-                    cutTree_sil = cut_tree(_hierarchicalClustering_sil, n_clusters=num_clusters).reshape(-1,)
-                    rfm_df_scaled_sil['Cluster Hierarchical'] = cutTree_sil
+                  # Create a subplot with 1 row and 1 columns
+                  fig_Vizualizer, (ax1) = plt.subplots(1, 1)
+                  fig_Vizualizer.set_size_inches(10, 5)
 
-                    Centroid_df_sil = Initiate_Centroid(rfm_df_scaled_sil, num_clusters)
-                    rfm_df_scaled_sil2, Centroid_df_sil , iterasi_sil= clusterisasi(rfm_df_scaled_sil, rfm_df_scaled_sil['Amount'], rfm_df_scaled_sil['Frequency'], rfm_df_scaled_sil['Recency'], num_clusters, Centroid_df_sil)
+                  # The 1st subplot is the silhouette plot
+                  # The silhouette coefficient can range from -1, 1 but in this example all
+                  # lie within [-0.1, 1]
+                  ax1.set_xlim([-0.1, 1])
+
+                  # The (n_clusters+1)*10 is for inserting blank space between silhouette
+                  # plots of individual clusters, to demarcate them clearly.
+                  ax1.set_ylim([0, len(rfm_df_scaled_sil) + (num_clusters + 1) * 10])
+
+                  _hierarchicalClustering_sil = linkage(rfm_df_scaled_sil, method=hierarchical_method, metric='euclidean')
+                  cutTree_sil = cut_tree(_hierarchicalClustering_sil, n_clusters=num_clusters).reshape(-1,)
+                  rfm_df_scaled_sil['Cluster Hierarchical'] = cutTree_sil
+
+                  Centroid_df_sil = Initiate_Centroid(rfm_df_scaled_sil, num_clusters)
+                  rfm_df_scaled_sil2, Centroid_df_sil , iterasi_sil= clusterisasi(rfm_df_scaled_sil, rfm_df_scaled_sil['Amount'], rfm_df_scaled_sil['Frequency'], rfm_df_scaled_sil['Recency'], num_clusters, Centroid_df_sil)
+                  
+                  Cluster_labels_sil = rfm_df_scaled_sil2['Index Cluster'].to_numpy()
+                  cluster_labels_sil = Cluster_labels_sil
+                  
+                  # silhouette score
+                  silhouette_avg = silhouette_score(rfm_df_scaled_sil2, cluster_labels_sil)
+                  silhouette.append(silhouette_avg)
+                  listSilhouette_df = [num_clusters, silhouette_avg]
+                  silhouette_df.append(listSilhouette_df)
+
+                  sample_silhouette_values = silhouette_samples(rfm_df_scaled_sil2, cluster_labels_sil)
+                  y_lower = 10
+                  for i in range(num_clusters):
+                    # Aggregate the silhouette scores for samples belonging to
+                    # cluster i, and sort them
+                    ith_cluster_silhouette_values = sample_silhouette_values[cluster_labels_sil == i]
+
+                    ith_cluster_silhouette_values.sort()
+
+                    size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                    y_upper = y_lower + size_cluster_i
+
+                    color = cm.nipy_spectral(float(i) / num_clusters)
+                    ax1.fill_betweenx(
+                        np.arange(y_lower, y_upper),
+                        0,
+                        ith_cluster_silhouette_values,
+                        facecolor=color,
+                        edgecolor=color,
+                        alpha=0.7,
+                    )
+
+                    # Label the silhouette plots with their cluster numbers at the middle
+                    ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+                    # Compute the new y_lower for next plot
+                    y_lower = y_upper + 10  # 10 for the 0 samples
                     
-                    Cluster_labels_sil = rfm_df_scaled_sil2['Index Cluster'].to_numpy()
-                    cluster_labels_sil = Cluster_labels_sil
-                    
-                    # silhouette score
-                    silhouette_avg = silhouette_score(rfm_df_scaled_sil2, cluster_labels_sil)
-                    silhouette.append(silhouette_avg)
-                    listSilhouette_df = [num_clusters, silhouette_avg]
-                    silhouette_df.append(listSilhouette_df)
-                    # st.text("For n_clusters={0}, the silhouette score is {1}".format(num_clusters, silhouette_avg))
+                  # st.text("For n_clusters={0}, the silhouette score is {1}".format(num_clusters, silhouette_avg))
+                  ax1.set_title("The silhouette plot for the various clusters.")
+                  ax1.set_xlabel("The silhouette coefficient values")
+                  ax1.set_ylabel("Cluster label")
+
+                  # The vertical line for average silhouette score of all the values
+                  ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+
+                  ax1.set_yticks([])  # Clear the yaxis labels / ticks
+                  ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+                  st.pyplot(fig_Vizualizer)
                 
                 silhouette_df = pd.DataFrame(silhouette_df)
                 silhouette_df.columns = ['Clusters', 'Silhouette Score']
                 silhouette_df.style.hide(axis='index')
-
-                st.dataframe(silhouette_df)
-
 
                 # Vizualization Silhouette Analysis   
                 fig_Silh = plt.figure(figsize=(20, 10)) 
@@ -316,6 +366,10 @@ def main():
                 plt.ylabel('silhouette_avg')
                 plt.title('silhouette')
                 st.pyplot(fig_Silh) 
+
+                # DataFrame
+                st.dataframe(silhouette_df)
+                 
 
               # Region show plot
               with tab3:
@@ -344,7 +398,14 @@ def main():
               with tab4:
                 st.header('RFM Output')
                 rfm_img = Image.open('img/app_img/rfm.png')
-                st.image(rfm_img, caption='Customer Value Matrixes (Der-Chiang Li, Wen-Li Dai, and Wan-Ting Tseng, 2011)')
+                # st.image(rfm_img, caption='Customer Value Matrixes (Der-Chiang Li, Wen-Li Dai, and Wan-Ting Tseng, 2011)')
+                st.image(rfm_img)
+                st.markdown("<p style='text-align: center;'>Customer Value Matrixes (Der-Chiang Li, Wen-Li Dai, and Wan-Ting Tseng, 2011)</p>", unsafe_allow_html=True)
+                with st.expander('See Explanation !'):
+                  st.markdown("<p style='text-align: left;'><strong>Spenders</strong> class, are customers who have demonstrated a capacity for high average purchase amounts.</p>", unsafe_allow_html=True)
+                  st.markdown("<p style='text-align: left;'><strong>Frequent</strong> class, are customers who have proven their loyalty via repeat purchases.</p>", unsafe_allow_html=True)
+                  st.markdown("<p style='text-align: left;'><strong>Uncertain</strong> class, are customers who have low purchasing power and interest.</p>", unsafe_allow_html=True)
+                  st.markdown("<p style='text-align: left;'><strong>Best</strong> class, are customers who have high average purchase amounts and frequency</p>", unsafe_allow_html=True)
 
                 stdDev_df = output_stdDev(rfm_df_scaled2, k)
 
@@ -362,7 +423,7 @@ def main():
                 avg_r = np.average(r_arr)
 
                 # for monetary output
-                col2,col3 = st.columns(2)
+                col2,col3,col4 = st.columns(3)
                 # col1,
                 # with col1:
                   # for Recency output
@@ -374,20 +435,46 @@ def main():
                   #   st.write(r_output)
                 with col2:
                   # for Frequency output
+                  f_flag_list = []
                   for num_clusters in range(k):
+                    f_flag = ''
                     if stdDev_df.iloc[num_clusters, 1] > avg_f:
                         f_output = 'Frequency at cluster {0} is F(\u2191)'.format(num_clusters)
+                        f_flag = 'F_UP'
                     else:
                         f_output = 'Frequency at cluster {0} is F(\u2193)'.format(num_clusters)
+                        f_flag = 'F_DOWN'
+                    f_flag_list.append(f_flag)
                     st.write(f_output)
                 with col3:
                   # for Monetary output
+                  m_flag_list = []
                   for num_clusters in range(k):
+                    m_flag = ''
                     if stdDev_df.iloc[num_clusters, 0] > avg_m:
                         m_output = 'Monetary at cluster {0} is M(\u2191)'.format(num_clusters)
+                        m_flag = 'M_UP'
                     else:
                         m_output = 'Monetary at cluster {0} is M(\u2193)'.format(num_clusters)
+                        m_flag = 'M_DOWN'
+                    m_flag_list.append(m_flag)
                     st.write(m_output)
+                with col4:
+                  # Output RFM mapper
+                  stdDev_df['F_FLAG'] = f_flag_list
+                  stdDev_df['M_FLAG'] = m_flag_list
+
+                  for i in range(k):
+                    mapping_rfm = ''
+                    if(stdDev_df.iloc[i,3] == 'F_DOWN' and stdDev_df.iloc[i,4] == 'M_UP'):
+                        mapping_rfm = 'then cluster {0} is Spender'.format(i)
+                    elif(stdDev_df.iloc[i,3] == 'F_UP' and stdDev_df.iloc[i,4] == 'M_UP'):
+                        mapping_rfm = 'then cluster {0} is Best'.format(i)
+                    elif(stdDev_df.iloc[i,3] == 'F_DOWN' and stdDev_df.iloc[i,4] == 'M_DOWN'):
+                        mapping_rfm = 'then cluster {0} is Uncertain'.format(i)
+                    elif(stdDev_df.iloc[i,3] == 'F_UP' and stdDev_df.iloc[i,4] == 'M_DOWN'):
+                        mapping_rfm = 'then cluster {0} is Frequent'.format(i)
+                    st.write(mapping_rfm)
 
 
               # Region Sidebar continue
@@ -486,6 +573,15 @@ hide_streamlit_style = """
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# Hide Anchor (link) titles
+st.markdown("""
+    <style>
+    .css-15zrgzn {display: none}
+    .css-eczf16 {display: none}
+    .css-jn99sy {display: none}
+    </style>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == '__main__':
