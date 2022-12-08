@@ -249,7 +249,7 @@ def main():
               cutTree = cut_tree(_hierarchicalClustering, n_clusters=k).reshape(-1,)
 
               # Tab function 
-              tab1, tab2, tab3, tab4 = st.tabs(['Dendogram Hierarchical Clustering', 'Silhouette Score', 'RFM Boxplot', 'RFM Analysis'])
+              tab1, tab2, tab3, tab4 = st.tabs(['Dendrogram Hierarchical Clustering', 'Silhouette Score', 'RFM Boxplot', 'RFM Analysis'])
               # Dendogram
               with tab1:
                 st.header(hierarchical_method + ' Method')
@@ -344,7 +344,7 @@ def main():
                     y_lower = y_upper + 10  # 10 for the 0 samples
                     
                   # st.text("For n_clusters={0}, the silhouette score is {1}".format(num_clusters, silhouette_avg))
-                  ax1.set_title("The silhouette plot for the various clusters.")
+                  ax1.set_title("The silhouette plot for number of clusters {0}.".format(num_clusters))
                   ax1.set_xlabel("The silhouette coefficient values")
                   ax1.set_ylabel("Cluster label")
 
@@ -368,8 +368,12 @@ def main():
                 st.pyplot(fig_Silh) 
 
                 # DataFrame
-                st.dataframe(silhouette_df)
-                 
+                # Hide Index Dataframe
+                st.dataframe(silhouette_df.style.hide(axis='index'))
+                silhouette_max = silhouette_df.iloc[:,1].max()
+                silhouette_opt = silhouette_df.loc[silhouette_df['Silhouette Score'] == silhouette_max]
+                opt_clt = silhouette_opt.iloc[0,0]
+                st.write('Optimal clusters is', str(opt_clt))
 
               # Region show plot
               with tab3:
@@ -476,7 +480,6 @@ def main():
                         mapping_rfm = 'then cluster {0} is Frequent'.format(i)
                     st.write(mapping_rfm)
 
-
               # Region Sidebar continue
               if st.sidebar.checkbox(label = 'Show Data'):
                   st.markdown("""---""")
@@ -486,7 +489,7 @@ def main():
                   # Download output data as csv
                   csv_RFM = convert_df(rfm)
                   st.sidebar.download_button(label = 'Save Data', data=csv_RFM, file_name='RFM_Hkmeans.csv', mime='text/csv')
-
+              
     
     if menu == 'Guide':
       st.markdown("<h2 style='text-align: center;'>User Manual Guide</h2>", unsafe_allow_html=True)
@@ -516,14 +519,8 @@ def main():
       st.image(slider_numClt_img, caption='Slider Number of Clusters')
       st.markdown('<p style="text-align: justify;">The Number of Clusters slider functions to determine the desired number of clusters before carrying out the clustering process. The way to determine the desired cluster is to move the slider point with a value range of 2 to 10</p>', unsafe_allow_html=True)
 
-      # Number of Clusters
-      st.subheader('1.3. Hierarchical Method')
-      hierarchicalMethod_img = ImageOps.expand(Image.open('img/user_manual/hierarchicalMethod.png'), border= 5, fill='white')
-      st.image(hierarchicalMethod_img, caption='Hierarchical Method')
-      st.markdown('<p style="text-align: justify;">There are 4 choices in determining the hierarchical clustering method, namely single(This is also known as the Nearest Point Algorithm), complete(Farthest Point Algorithm or Voor Hees Algorithm), average(This is also called the UPGMA algorithm), and ward(uses the Ward variance minimization algorithm, this is also known as the incremental algorithm)</p>', unsafe_allow_html=True)
-
       # Hierarchical K-Means Clustering
-      st.subheader('1.4. Hierarchical K-Means Clustering')
+      st.subheader('1.3. Hierarchical K-Means Clustering')
       hierarchicalClustering_img = ImageOps.expand(Image.open('img/user_manual/hierarchicalClustering.png'), border= 5, fill='white')
       st.image(hierarchicalClustering_img, caption='Hierarchical K-Means Clustering')
       st.markdown('<p style="text-align: justify;">It is a combination of two algorithms, namely Hierarchical Clustering and K-Means Clustering. By clicking the "Hierarchical K-Means Clustering" button, the application will automatically perform computations starting from validation using Sillhouette Score, data visualization, to determining output results based on RFM mapping.</p>', unsafe_allow_html=True)
@@ -531,7 +528,7 @@ def main():
       st.image(hierarchicalClustering_after_img, caption='After Clicking Hierarchical K-Means Clustering')
 
       # Show Data
-      st.subheader('1.5. Show Data')
+      st.subheader('1.4. Show Data')
       showDataset_img = ImageOps.expand(Image.open('img/user_manual/showDataset.png'), border= 5, fill='white')
       st.image(showDataset_img, caption='Show Data')
       st.markdown('<p style="text-align: justify;">by clicking the "Show Data" checkbox, the user can see the preprocessed and clustered data</p>', unsafe_allow_html=True)
@@ -539,10 +536,10 @@ def main():
       st.image(showDatasetAfter_img, caption='Show Data Result')
 
       # Save Data
-      st.subheader('1.6. Save Data')
+      st.subheader('1.5. Save Data')
       saveDataset_img = ImageOps.expand(Image.open('img/user_manual/saveDataset.png'), border= 5, fill='white')
       st.image(saveDataset_img, caption='Show Data')
-      st.markdown('<p style="text-align: justify;">by clicking the "Save Data" button, the user can download the preprocessed and clustered data</p>', unsafe_allow_html=True)
+      st.markdown('<p style="text-align: justify;">by clicking the "Save Data" button, the user can download the preprocessed and clustered data into csv file</p>', unsafe_allow_html=True)
 
 
     if menu == 'About':
@@ -564,8 +561,6 @@ def main():
 
 
 
-
-
 # Hide Streamlit markdown
 hide_streamlit_style = """
             <style>
@@ -582,6 +577,7 @@ st.markdown("""
     .css-jn99sy {display: none}
     </style>
     """, unsafe_allow_html=True)
+
 
 
 if __name__ == '__main__':
