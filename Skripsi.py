@@ -138,7 +138,6 @@ if "Clt_Res" not in st.session_state:
 def Clt_Res_Callback():
   st.session_state.Clt_Res = True
 
-# endregion
 
 @st.experimental_memo
 def convert_df(df):
