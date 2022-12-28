@@ -252,7 +252,9 @@ def main():
               # Dendogram
               with tab1:
                 st.header(hierarchical_method + ' Method')
-                fig_Silh = plt.figure(figsize=(20, 10)) 
+                fig_Silh = plt.figure(figsize=(20, 10))
+                plt.xlabel('Sample Data of Customers')
+                plt.ylabel('Euclidean Distance')
                 dendrogram(_hierarchicalClustering)
                 st.pyplot(fig_Silh) 
 
