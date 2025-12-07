@@ -3,9 +3,10 @@ numpy==1.23.3
 pandas==1.5.0
 Pillow==9.4.0
 scikit_learn==1.2.0
-scipy==1.9.1
+scipy==1.10.1
 seaborn==0.12.2
 streamlit==1.17.0
 streamlit_option_menu==0.3.2
-streamlit_profiler==0.2.4
+# streamlit_profiler==0.2.4
 yellowbrick==1.5
+altair==4.2.2
